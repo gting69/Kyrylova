@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Pair Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .game-info {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: white;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+        }
+
+        .card {
+            aspect-ratio: 1;
+            background: linear-gradient(145deg, #f0f0f0, #cacaca);
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 4px 4px 8px rgba(0,0,0,0.2);
+            position: relative;
+            min-height: 80px;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 6px 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .card.flipped {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a24);
+            color: white;
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+            color: white;
+            cursor: default;
+        }
+
+        .card.matched:hover {
+            transform: none;
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn.danger {
+            background: #e74c3c;
+        }
+
+        .btn.danger:hover {
+            background: #c0392b;
+        }
+
+        .settings {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .settings label {
+            display: block;
+            margin: 10px 0;
+            text-align: left;
+        }
+
+        .settings select, .settings input {
+            margin-left: 10px;
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .timer {
+            font-size: 18px;
+            font-weight: bold;
+            color: #f39c12;
+        }
+
+        .timer.warning {
+            color: #e74c3c;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+
+        @media (max-width: 600px) {
+            .game-board {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                padding: 15px;
+            }
+            
+            .card {
+                font-size: 18px;
+                min-height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🧠 Memory Pair Game</h1>
+        
+        <div class="settings" id="settings">
+            <h3>Налаштування гри</h3>
+            <label>
+                Розмір поля:
+                <select id="boardSize">
+                    <option value="4">4x4 (8 пар)</option>
+                    <option value="6">6x4 (12 пар)</option>
+                    <option value="8">4x4 (16 пар)</option>
+                </select>
+            </label>
+            <label>
+                Складність:
+                <select id="difficulty">
+                    <option value="easy">Легка (3 хв)</option>
+                    <option value="normal">Нормальна (2 хв)</option>
+                    <option value="hard">Важка (1 хв)</option>
+                </select>
+            </label>
+            <br><br>
+            <button class="btn" onclick="startGame()">Розпочати гру</button>
+            <button class="btn danger" onclick="resetSettings()">Скинути налаштування</button>
+        </div>
+        
+        <div class="game-info">
+            <div>Ходи: <span id="moves">0</span></div>
+            <div class="timer">Час: <span id="timer">0:00</span></div>
+            <div>Знайдено пар: <span id="pairs">0</span></div>
+        </div>
+        
+        <div class="game-board" id="gameBoard"></div>
+        
+        <div class="controls">
+            <button class="btn" onclick="restartGame()">Рестарт</button>
+        </div>
+    </div>
+
+    <script>
+        // Емоджі для карток
+        const cardSymbols = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐧'];
+        
+        let gameState = {
+            cards: [],
+            flippedCards: [],
+            matchedPairs: 0,
+            moves: 0,
+            startTime: null,
+            timer: null,
+            timeLimit: 180, // секунди
+            gameStarted: false
+        };
+
+        // Pure functions
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        function createCardPairs(size) {
+            const numPairs = (size * size) / 2;
+            const symbols = cardSymbols.slice(0, numPairs);
+            const pairs = [...symbols, ...symbols];
+            return shuffleArray(pairs);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('moves').textContent = gameState.moves;
+            document.getElementById('pairs').textContent = gameState.matchedPairs;
+        }
+
+        function startTimer() {
+            gameState.startTime = Date.now();
+            gameState.timer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+                const remaining = Math.max(0, gameState.timeLimit - elapsed);
+                
+                const timerElement = document.getElementById('timer');
+                timerElement.textContent = formatTime(remaining);
+                
+                if (remaining <= 30) {
+                    timerElement.classList.add('warning');
+                }
+                
+                if (remaining === 0) {
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (gameState.timer) {
+                clearInterval(gameState.timer);
+                gameState.timer = null;
+            }
+        }
+
+        function createGameBoard(size) {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+            
+            gameState.cards = createCardPairs(size);
+            
+            gameState.cards.forEach((symbol, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.index = index;
+                card.dataset.symbol = symbol;
+                card.textContent = '?';
+                card.addEventListener('click', () => flipCard(index));
+                board.appendChild(card);
+            });
+        }
+
+        function flipCard(index) {
+            if (!gameState.gameStarted || gameState.flippedCards.length >= 2) return;
+            
+            const card = document.querySelector(`[data-index="${index}"]`);
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+            
+            card.classList.add('flipped');
+            card.textContent = card.dataset.symbol;
+            gameState.flippedCards.push(index);
+            
+            if (gameState.flippedCards.length === 2) {
+                gameState.moves++;
+                updateDisplay();
+                checkForMatch();
+            }
+        }
+
+        function checkForMatch() {
+            const [first, second] = gameState.flippedCards;
+            const firstCard = document.querySelector(`[data-index="${first}"]`);
+            const secondCard = document.querySelector(`[data-index="${second}"]`);
+            
+            setTimeout(() => {
+                if (gameState.cards[first] === gameState.cards[second]) {
+                    // Пара знайдена
+                    firstCard.classList.add('matched');
+                    secondCard.classList.add('matched');
+                    gameState.matchedPairs++;
+                    
+                    if (gameState.matchedPairs === gameState.cards.length / 2) {
+                        endGame(true);
+                    }
+                } else {
+                    // Не пара - перевертаємо назад
+                    firstCard.classList.remove('flipped');
+                    secondCard.classList.remove('flipped');
+                    firstCard.textContent = '?';
+                    secondCard.textContent = '?';
+                }
+                
+                gameState.flippedCards = [];
+                updateDisplay();
+            }, 1000);
+        }
+
+        function endGame(won) {
+            gameState.gameStarted = false;
+            stopTimer();
+            
+            const message = won ? 
+                `🎉 Вітаємо! Ви виграли за ${gameState.moves} ходів!` : 
+                '⏰ Час вичерпано! Спробуйте ще раз.';
+            
+            setTimeout(() => alert(message), 500);
+        }
+
+        function startGame() {
+            const boardSize = parseInt(document.getElementById('boardSize').value);
+            const difficulty = document.getElementById('difficulty').value;
+            
+            // Встановлюємо час відповідно до складності
+            const timeSettings = {
+                easy: 180,   // 3 хв
+                normal: 120, // 2 хв  
+                hard: 60     // 1 хв
+            };
+            
+            gameState.timeLimit = timeSettings[difficulty];
+            gameState.gameStarted = true;
+            gameState.moves = 0;
+            gameState.matchedPairs = 0;
+            gameState.flippedCards = [];
+            
+            document.getElementById('settings').style.display = 'none';
+            createGameBoard(boardSize);
+            updateDisplay();
+            startTimer();
+        }
+
+        function restartGame() {
+            stopTimer();
+            gameState.gameStarted = false;
+            document.getElementById('settings').style.display = 'block';
+            document.getElementById('gameBoard').innerHTML = '';
+            document.getElementById('timer').classList.remove('warning');
+            updateDisplay();
+        }
+
+        function resetSettings() {
+            document.getElementById('boardSize').value = '4';
+            document.getElementById('difficulty').value = 'easy';
+        }
+
+        // Ініціалізація
+        updateDisplay();
+    </script>
+</body>
+</html>

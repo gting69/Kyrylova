@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Слайдер (Карусель)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .slider-container {
+            max-width: 800px;
+            width: 100%;
+            position: relative;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .slider-wrapper {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+        }
+
+        .slides {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide {
+            min-width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .slide:nth-child(1) { background: linear-gradient(45deg, #ff6b6b, #ee5a24); }
+        .slide:nth-child(2) { background: linear-gradient(45deg, #4834d4, #686de0); }
+        .slide:nth-child(3) { background: linear-gradient(45deg, #00d2d3, #54a0ff); }
+        .slide:nth-child(4) { background: linear-gradient(45deg, #5f27cd, #341f97); }
+        .slide:nth-child(5) { background: linear-gradient(45deg, #00d8d6, #3742fa); }
+
+        .slider-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            color: #333;
+            z-index: 10;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slider-arrow:hover {
+            background: white;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider-arrow.prev {
+            left: 20px;
+        }
+
+        .slider-arrow.next {
+            right: 20px;
+        }
+
+        .pagination {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: white;
+            transform: scale(1.3);
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-weight: 600;
+            color: #495057;
+            min-width: 120px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .speed-display {
+            font-weight: bold;
+            color: #007bff;
+            min-width: 60px;
+        }
+
+        @media (max-width: 768px) {
+            .slider-container {
+                margin: 10px;
+            }
+            
+            .slider-wrapper {
+                height: 300px;
+            }
+            
+            .slide {
+                font-size: 1.5rem;
+            }
+            
+            .slider-arrow {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .control-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            label {
+                min-width: auto;
+            }
+            
+            input[type="range"] {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .slider-wrapper {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slider-container">
+        <div class="slider-wrapper">
+            <div class="slides" id="slides">
+                <div class="slide">Слайд 1</div>
+                <div class="slide">Слайд 2</div>
+                <div class="slide">Слайд 3</div>
+                <div class="slide">Слайд 4</div>
+                <div class="slide">Слайд 5</div>
+            </div>
+            
+            <button class="slider-arrow prev" id="prevBtn">‹</button>
+            <button class="slider-arrow next" id="nextBtn">›</button>
+            
+            <div class="pagination" id="pagination">
+                <span class="dot active" data-slide="0"></span>
+                <span class="dot" data-slide="1"></span>
+                <span class="dot" data-slide="2"></span>
+                <span class="dot" data-slide="3"></span>
+                <span class="dot" data-slide="4"></span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Швидкість анімації:</label>
+                <input type="range" id="speedRange" min="200" max="2000" value="500" step="100">
+                <span class="speed-display" id="speedDisplay">500ms</span>
+            </div>
+            
+            <div class="control-group">
+                <label>Автопрокрутка:</label>
+                <input type="checkbox" id="autoplayToggle">
+                <label for="autoplayToggle">Увімкнути</label>
+            </div>
+            
+            <div class="control-group">
+                <label>Показати стрілки:</label>
+                <input type="checkbox" id="arrowsToggle" checked>
+                <label for="arrowsToggle">Увімкнути</label>
+            </div>
+            
+            <div class="control-group">
+                <label>Показати пагінацію:</label>
+                <input type="checkbox" id="paginationToggle" checked>
+                <label for="paginationToggle">Увімкнути</label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Slider {
+            constructor(config = {}) {
+                this.slides = config.slides || document.querySelectorAll('.slide');
+                this.slidesContainer = document.getElementById('slides');
+                this.currentSlide = 0;
+                this.totalSlides = this.slides.length;
+                this.animationDuration = config.animationDuration || 500;
+                this.autoplay = config.autoplay || false;
+                this.showArrows = config.showArrows !== undefined ? config.showArrows : true;
+                this.showPagination = config.showPagination !== undefined ? config.showPagination : true;
+                this.autoplayInterval = null;
+                this.isTransitioning = false;
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.updateSlider();
+                this.updateControls();
+                
+                if (this.autoplay) {
+                    this.startAutoplay();
+                }
+            }
+            
+            setupEventListeners() {
+                // Кнопки навігації
+                document.getElementById('prevBtn').addEventListener('click', () => this.prevSlide());
+                document.getElementById('nextBtn').addEventListener('click', () => this.nextSlide());
+                
+                // Пагінація
+                document.querySelectorAll('.dot').forEach((dot, index) => {
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                });
+                
+                // Клавіатурна навігація
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') {
+                        this.prevSlide();
+                    } else if (e.key === 'ArrowRight') {
+                        this.nextSlide();
+                    }
+                });
+                
+                // Пауза автопрокрутки при наведенні миші
+                this.slidesContainer.addEventListener('mouseenter', () => {
+                    if (this.autoplay) {
+                        this.stopAutoplay();
+                    }
+                });
+                
+                this.slidesContainer.addEventListener('mouseleave', () => {
+                    if (this.autoplay) {
+                        this.startAutoplay();
+                    }
+                });
+                
+                // Контроли
+                document.getElementById('speedRange').addEventListener('input', (e) => {
+                    this.animationDuration = parseInt(e.target.value);
+                    document.getElementById('speedDisplay').textContent = `${this.animationDuration}ms`;
+                    this.updateAnimationDuration();
+                });
+                
+                document.getElementById('autoplayToggle').addEventListener('change', (e) => {
+                    this.autoplay = e.target.checked;
+                    if (this.autoplay) {
+                        this.startAutoplay();
+                    } else {
+                        this.stopAutoplay();
+                    }
+                });
+                
+                document.getElementById('arrowsToggle').addEventListener('change', (e) => {
+                    this.showArrows = e.target.checked;
+                    this.toggleArrows();
+                });
+                
+                document.getElementById('paginationToggle').addEventListener('change', (e) => {
+                    this.showPagination = e.target.checked;
+                    this.togglePagination();
+                });
+            }
+            
+            nextSlide() {
+                if (this.isTransitioning) return;
+                this.currentSlide = (this.currentSlide + 1) % this.totalSlides;
+                this.updateSlider();
+            }
+            
+            prevSlide() {
+                if (this.isTransitioning) return;
+                this.currentSlide = this.currentSlide === 0 ? this.totalSlides - 1 : this.currentSlide - 1;
+                this.updateSlider();
+            }
+            
+            goToSlide(index) {
+                if (this.isTransitioning || index === this.currentSlide) return;
+                this.currentSlide = index;
+                this.updateSlider();
+            }
+            
+            updateSlider() {
+                this.isTransitioning = true;
+                const translateX = -this.currentSlide * 100;
+                this.slidesContainer.style.transform = `translateX(${translateX}%)`;
+                
+                // Оновлення пагінації
+                document.querySelectorAll('.dot').forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+                
+                // Зняття блокування після завершення анімації
+                setTimeout(() => {
+                    this.isTransitioning = false;
+                }, this.animationDuration);
+            }
+            
+            updateAnimationDuration() {
+                this.slidesContainer.style.transitionDuration = `${this.animationDuration}ms`;
+            }
+            
+            startAutoplay() {
+                this.stopAutoplay(); // Очищення попереднього інтервалу
+                this.autoplayInterval = setInterval(() => {
+                    this.nextSlide();
+                }, 3000);
+            }
+            
+            stopAutoplay() {
+                if (this.autoplayInterval) {
+                    clearInterval(this.autoplayInterval);
+                    this.autoplayInterval = null;
+                }
+            }
+            
+            toggleArrows() {
+                const arrows = document.querySelectorAll('.slider-arrow');
+                arrows.forEach(arrow => {
+                    arrow.style.display = this.showArrows ? 'flex' : 'none';
+                });
+            }
+            
+            togglePagination() {
+                const pagination = document.getElementById('pagination');
+                pagination.style.display = this.showPagination ? 'flex' : 'none';
+            }
+            
+            updateControls() {
+                this.updateAnimationDuration();
+                this.toggleArrows();
+                this.togglePagination();
+            }
+        }
+        
+        // Ініціалізація слайдера
+        const slider = new Slider({
+            animationDuration: 500,
+            autoplay: false,
+            showArrows: true,
+            showPagination: true
+        });
+    </script>
+</body>
+</html>

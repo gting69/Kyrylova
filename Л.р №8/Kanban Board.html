@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .kanban-container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .column {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+
+        .column-header {
+            text-align: center;
+            padding: 15px;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .to-do { background: #3498db; }
+        .working { background: #e67e22; }
+        .done { background: #2ecc71; }
+
+        .task {
+            background: #ecf0f1;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: move;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .task:hover {
+            background: #d5dbdb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .task.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .column.drag-over {
+            background: #f8f9fa;
+            border: 2px dashed #3498db;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <h1>Kanban Board</h1>
+    
+    <div class="kanban-container">
+        <div class="column" data-status="todo">
+            <div class="column-header to-do">To Do</div>
+            <div class="task" draggable="true">Вивчити HTML</div>
+            <div class="task" draggable="true">Створити макет сайту</div>
+            <div class="task" draggable="true">Написати документацію</div>
+            <div class="task" draggable="true">Протестувати код</div>
+        </div>
+        
+        <div class="column" data-status="working">
+            <div class="column-header working">Working</div>
+            <div class="task" draggable="true">Вивчити CSS</div>
+            <div class="task" draggable="true">Розробити дизайн</div>
+            <div class="task" draggable="true">Оптимізувати код</div>
+        </div>
+        
+        <div class="column" data-status="done">
+            <div class="column-header done">Done</div>
+            <div class="task" draggable="true">Встановити редактор</div>
+            <div class="task" draggable="true">Налаштувати робоче місце</div>
+            <div class="task" draggable="true">Вивчити основи JS</div>
+            <div class="task" draggable="true">Створити перший проект</div>
+        </div>
+    </div>
+
+    <script>
+        let draggedTask = null;
+
+        // Додаємо обробники для всіх завдань
+        document.querySelectorAll('.task').forEach(task => {
+            task.addEventListener('dragstart', handleDragStart);
+            task.addEventListener('dragend', handleDragEnd);
+        });
+
+        // Додаємо обробники для всіх колонок
+        document.querySelectorAll('.column').forEach(column => {
+            column.addEventListener('dragover', handleDragOver);
+            column.addEventListener('drop', handleDrop);
+            column.addEventListener('dragenter', handleDragEnter);
+            column.addEventListener('dragleave', handleDragLeave);
+        });
+
+        function handleDragStart(e) {
+            draggedTask = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            draggedTask = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDragEnter(e) {
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            if (!this.contains(e.relatedTarget)) {
+                this.classList.remove('drag-over');
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            if (draggedTask && this.classList.contains('column')) {
+                this.appendChild(draggedTask);
+            }
+        }
+    </script>
+</body>
+</html>
