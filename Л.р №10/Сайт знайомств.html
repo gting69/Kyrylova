@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пошук друзів</title>
+    <style>
+        /* Загальні стилі та скидання */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            /* Для великих екранів: центруємо body */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            /* overflow-y: auto; -- Прибираємо, оскільки .container буде скролитись */
+        }
+
+        /* Стилі для форм авторизації/реєстрації (З ЛР №9) */
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 100%;
+            max-width: 500px;
+            overflow: hidden; /* Загальний overflow для контейнера, щоб таби не вилазили */
+            display: none; /* Початково приховуємо, якщо користувач вже авторизований */
+            z-index: 100; /* Перекриватиме основний додаток, коли активний */
+            padding: 0; /* Видаляємо padding, він є у .form-container */
+
+            /* Центрування для великих екранів */
+            position: relative; /* Щоб не впливав на скрол body */
+            top: auto;
+            left: auto;
+            transform: none;
+            margin: auto; /* Автоматичне центрування по горизонталі */
+            
+            /* Важливо для прокручування на ноутбуці */
+            max-height: 90vh; /* Обмежте максимальну висоту контейнера форми */
+            overflow-y: auto; /* Дозвольте прокрутку вмісту контейнера, якщо він перевищує max-height */
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            position: sticky; /* Щоб таби були видимі при скролі форми */
+            top: 0;
+            z-index: 10; /* Щоб вони були над іншими елементами при скролі */
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            border-bottom-color: #667eea;
+        }
+
+        .tab:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .form-container {
+            padding: 30px;
+            /* form-container не має власної прокрутки, її має .container */
+            /* overflow-y: hidden; /* Переконайтесь, що він не створює смуги прокрутки */ */
+            flex-grow: 1; 
+            min-height: 300px; /* Додайте мінімальну висоту, щоб уникнути стрибків */
+        }
+
+        /* *************** ВИПРАВЛЕННЯ: Управління видимістю форм *************** */
+        .form {
+            display: none; /* За замовчуванням приховано */
+            /* position: absolute; /* Прибираємо absolute, щоб вони були в нормальному потоці */ */
+            width: 100%;
+            height: auto; /* Висота по вмісту */
+            flex-direction: column; /* Для вертикального розташування полів */
+            justify-content: flex-start; /* Поля починаються зверху */
+            /* overflow-y: auto; /* Прокрутка буде на .container */ */
+            box-sizing: border-box; /* Включаємо padding у ширину/висоту */
+            transition: opacity 0.3s ease; /* Додаємо плавний перехід */
+            opacity: 0; /* Приховано за замовчуванням з прозорістю */
+            pointer-events: none; /* Забороняємо взаємодію, коли неактивна */
+        }
+        .form.active {
+            display: flex; /* Показуємо активну форму як flex */
+            opacity: 1; /* Робимо видимою */
+            pointer-events: auto; /* Дозволяємо взаємодію */
+            position: static; /* Важливо: Знімаємо absolute, щоб вона була в нормальному потоці */
+        }
+        /* ******************************************************************* */
+
+
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .required::after {
+            content: " *";
+            color: #e74c3c;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="tel"],
+        input[type="date"],
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .valid {
+            border-color: #27ae60 !important;
+            background-color: rgba(39, 174, 96, 0.05);
+        }
+
+        .invalid {
+            border-color: #e74c3c !important;
+            background-color: rgba(231, 76, 60, 0.05);
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .password-container {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #666;
+            font-size: 18px;
+            user-select: none;
+        }
+
+        .toggle-password:hover {
+            color: #667eea;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 8px;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="radio"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        select:disabled {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        /* Стилі для основного додатку (з ЛР №10) */
+        .app-container {
+            display: none; /* Початково приховано */
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%; /* Займає всю доступну ширину */
+            min-height: 100vh; /* Забезпечує, що контент може скролитись */
+            overflow-y: auto; /* Дозволяємо прокрутку основного додатка */
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #5a67d8;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .logout-btn {
+            padding: 8px 16px;
+            background: #e53e3e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .logout-btn:hover {
+            background: #c53030;
+        }
+        /* Контроли пошуку та фільтрації */
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .search-bar {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .filter-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap; /* Додано для адаптивності пагінації */
+        }
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .pagination button:hover {
+            background: #5a67d8;
+            color: white;
+        }
+        .pagination button.active {
+            background: #5a67d8;
+            color: white;
+        }
+        /* Сітка карток */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .user-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            display: flex; /* Для вирівнювання вмісту картки */
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        .user-card.favorite {
+            border: 2px solid #f6ad55;
+            background: linear-gradient(135deg, #fff7ed, #ffffff);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .user-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-right: 15px;
+            border: 3px solid #e2e8f0;
+        }
+        .user-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .user-age {
+            color: #718096;
+            font-size: 14px;
+        }
+        .card-body {
+            display: grid;
+            gap: 8px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        .favorite-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            margin-left: auto;
+            transition: transform 0.2s;
+            padding: 5px; /* Збільшено область натискання */
+        }
+        .favorite-btn:hover {
+            transform: scale(1.2);
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px auto; /* Центрування помилки */
+            text-align: center;
+            max-width: 500px;
+            display: none;
+        }
+        /* Адаптивність (об'єднана та оптимізована) */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            /* Форма авторизації/реєстрації */
+            .container {
+                position: static; /* Відключаємо fixed на середніх екранах */
+                transform: none;
+                margin: 0 auto; /* Центруємо через margin */
+                max-width: 400px; /* Обмежуємо ширину */
+                width: calc(100% - 30px); /* Враховуємо padding body */
+                height: auto; /* Висота по вмісту */
+                overflow-y: auto; /* Дозволяємо прокрутку, якщо вміст більший */
+            }
+            .form-container {
+                padding: 20px;
+            }
+            .tab {
+                padding: 15px 10px;
+                font-size: 14px;
+            }
+            .radio-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            /* Основний додаток */
+            .app-container {
+                padding: 15px;
+            }
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .filters {
+                grid-template-columns: 1fr;
+            }
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+            .user-card {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 0; /* Прибираємо padding з body на малих екранах */
+            }
+            /* Форма авторизації/реєстрації - на весь екран з прокруткою */
+            .container {
+                border-radius: 0; /* Без заокруглень на весь екран */
+                max-width: none;
+                width: 100vw;
+                height: 100vh; /* Займає всю висоту вьюпорта */
+                top: 0;
+                left: 0;
+                transform: none;
+                position: fixed; /* Фіксуємо на весь екран */
+                overflow-y: auto; /* Дозволяємо прокручування вмісту форми */
+                flex-direction: column; /* Зберігаємо flex-direction, якщо потрібно */
+                justify-content: flex-start; /* Вирівнюємо до верху */
+                align-items: stretch;
+            }
+            .form-container {
+                padding: 15px;
+                flex-grow: 1;
+            }
+            .form .form-group:last-of-type { /* Додаємо margin-bottom для останнього елемента форми, щоб кнопка не прилипала */
+                margin-bottom: 40px; /* Достатній відступ для прокрутки */
+            }
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="tel"],
+            input[type="date"],
+            select {
+                font-size: 16px; /* Запобігає зуму на iOS */
+            }
+
+            /* Основний додаток - на весь екран */
+            .app-container {
+                padding: 10px;
+                max-width: none;
+                width: 100vw; /* Займає всю ширину вьюпорта */
+                margin: 0;
+                min-height: 100vh; /* Забезпечує, що може скролитись, якщо контент великий */
+            }
+            .header {
+                border-radius: 0; /* Без заокруглень на весь екран */
+                padding: 15px;
+            }
+            .controls {
+                border-radius: 0; /* Без заокруглень на весь екран */
+                padding: 15px;
+            }
+            .user-card {
+                border-radius: 10px; /* Трохи менші заокруглення для карток */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="authContainer" class="container">
+        <div class="tabs">
+            <div class="tab active" data-tab="login" onclick="switchTab('login')">Авторизація</div>
+            <div class="tab" data-tab="register" onclick="switchTab('register')">Реєстрація</div>
+        </div>
+
+        <div class="form-container">
+            <div id="successMessage" class="success-message">
+                <strong>Успіх!</strong> <span id="successText"></span>
+            </div>
+
+            <form id="loginForm" class="form active">
+                <div class="form-group">
+                    <label for="loginUsername" class="required">Ім'я користувача</label>
+                    <input type="text" id="loginUsername" name="username" required>
+                    <div class="error-message" id="loginUsernameError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword" class="required">Пароль</label>
+                    <div class="password-container">
+                        <input type="password" id="loginPassword" name="password" required>
+                        <span class="toggle-password" onclick="togglePassword('loginPassword')">👁️</span>
+                    </div>
+                    <div class="error-message" id="loginPasswordError"></div>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="rememberMe" name="rememberMe">
+                        <label for="rememberMe">Запам'ятати мене</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn">Увійти</button>
+            </form>
+
+            <form id="registerForm" class="form">
+                <div class="form-group">
+                    <label for="firstName" class="required">Ім'я</label>
+                    <input type="text" id="firstName" name="firstName" required>
+                    <div class="error-message" id="firstNameError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="lastName" class="required">Прізвище</label>
+                    <input type="text" id="lastName" name="lastName" required>
+                    <div class="error-message" id="lastNameError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="required">Email</label>
+                    <input type="email" id="email" name="email" required>
+                    <div class="error-message" id="emailError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="required">Пароль</label>
+                    <div class="password-container">
+                        <input type="password" id="password" name="password" required>
+                        <span class="toggle-password" onclick="togglePassword('password')">👁️</span>
+                    </div>
+                    <div class="error-message" id="passwordError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword" class="required">Підтвердити пароль</label>
+                    <div class="password-container">
+                        <input type="password" id="confirmPassword" name="confirmPassword" required>
+                        <span class="toggle-password" onclick="togglePassword('confirmPassword')">👁️</span>
+                    </div>
+                    <div class="error-message" id="confirmPasswordError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone" class="required">Телефон</label>
+                    <input type="tel" id="phone" name="phone" placeholder="+380..." required>
+                    <div class="error-message" id="phoneError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="birthDate" class="required">Дата народження</label>
+                    <input type="date" id="birthDate" name="birthDate" required>
+                    <div class="error-message" id="birthDateError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="required">Стать</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="male" name="sex" value="male" required>
+                            <label for="male">Чоловік</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="female" name="sex" value="female" required>
+                            <label for="female">Жінка</label>
+                        </div>
+                    </div>
+                    <div class="error-message" id="sexError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="country" class="required">Країна</label>
+                    <select id="country" name="country" required>
+                        <option value="">Оберіть країну</option>
+                        <option value="ukraine">Україна</option>
+                        <option value="poland">Польща</option>
+                        <option value="germany">Німеччина</option>
+                        <option value="usa">США</option>
+                        <option value="canada">Канада</option>
+                    </select>
+                    <div class="error-message" id="countryError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="city" class="required">Місто</label>
+                    <select id="city" name="city" required disabled>
+                        <option value="">Спочатку оберіть країну</option>
+                    </select>
+                    <div class="error-message" id="cityError"></div>
+                </div>
+
+                <button type="submit" class="submit-btn">Зареєструватися</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="appContainer" class="app-container">
+        <header class="header">
+            <div class="logo"> 🔍  Пошук друзів</div>
+            <div class="user-info">
+                <span id="welcomeText">Привіт, користувач!</span>
+                <button id="logoutBtn" class="logout-btn">Вийти</button>
+            </div>
+        </header>
+        <div class="controls">
+            <input type="text" id="searchInput" class="search-bar" placeholder="Пошук за ім'ям, прізвищем або email...">
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <select id="sortSelect">
+                        <option value="">Сортування</option>
+                        <option value="name-asc">Ім'я (А-Я)</option>
+                        <option value="name-desc">Ім'я (Я-А)</option>
+                        <option value="age-asc">Вік (↑)</option>
+                        <option value="age-desc">Вік (↓)</option>
+                        <option value="registered-asc">Дата реєстрації (↑)</option>
+                        <option value="registered-desc">Дата реєстрації (↓)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="genderFilter">
+                        <option value="">Всі статі</option>
+                        <option value="male">Чоловіки</option>
+                        <option value="female">Жінки</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="ageRangeFilter">
+                        <option value="">Всі вікові групи</option>
+                        <option value="18-25">18-25 років</option>
+                        <option value="26-35">26-35 років</option>
+                        <option value="36-50">36-50 років</option>
+                        <option value="51-100">51+ років</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="nationalityFilter">
+                        <option value="">Всі країни</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div id="loadingIndicator" class="loading">Завантаження...</div>
+        <div id="errorMessage" class="error" style="display: none;"></div>
+        
+        <div id="cardsContainer" class="cards-grid"></div>
+        
+        <div id="pagination" class="pagination"></div>
+    </div>
+
+    <script>
+        // Глобальні змінні для зберігання стану додатку (з ЛР №10)
+        let allUsers = []; // Всі завантажені користувачі
+        let filteredUsers = []; // Відфільтровані користувачі
+        let currentPage = 1; // Поточна сторінка
+        const usersPerPage = 30; // Кількість користувачів на сторінку
+        let isLoading = false; // Прапор завантаження
+        let favorites = []; // Обрані друзі
+
+        // Елементи DOM (змінено для інтеграції з ЛР №9)
+        const authContainer = document.getElementById('authContainer'); // Тепер це контейнер з табами ЛР9
+        const appContainer = document.getElementById('appContainer');
+        const loginForm = document.getElementById('loginForm'); // Новий ID для форми авторизації
+        const registerForm = document.getElementById('registerForm'); // Новий ID для форми реєстрації
+        const logoutBtn = document.getElementById('logoutBtn');
+        const welcomeText = document.getElementById('welcomeText');
+        const searchInput = document.getElementById('searchInput');
+        const sortSelect = document.getElementById('sortSelect');
+        const genderFilter = document.getElementById('genderFilter');
+        const ageRangeFilter = document.getElementById('ageRangeFilter');
+        const nationalityFilter = document.getElementById('nationalityFilter');
+        const cardsContainer = document.getElementById('cardsContainer');
+        const pagination = document.getElementById('pagination');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // ******************************************************
+        // Блок функцій валідації та роботи з формами (З ЛР №9)
+        // ******************************************************
+
+        // Об'єкт з містами для кожної країни (З ЛР №9)
+        const cities = {
+            ukraine: ['Київ', 'Харків', 'Одеса', 'Дніпро', 'Львів', 'Запоріжжя', 'Чернівці'],
+            poland: ['Варшава', 'Краків', 'Гданськ', 'Вроцлав', 'Познань'],
+            germany: ['Берлін', 'Мюнхен', 'Гамбург', 'Кельн', 'Франкфурт'],
+            usa: ['Нью-Йорк', 'Лос-Анджелес', 'Чикаго', 'Х\'юстон', 'Фенікс'],
+            canada: ['Торонто', 'Ванкувер', 'Монреаль', 'Калгарі', 'Оттава']
+        };
+
+        // Регулярні вирази для валідації (З ЛР №9)
+        const patterns = {
+            email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+            phone: /^\+380\d{9}$/,
+            name: /^[a-zA-Zа-яА-ЯёЁіІїЇєЄ\s]{3,15}$/
+        };
+
+        /**
+         * Функція для показу повідомлення про помилку
+         * @param {string} fieldId - ID поля або ID контейнера для помилки
+         * @param {string} message - текст помилки
+         */
+        function showError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const errorElement = document.getElementById(fieldId + 'Error');
+            
+            if (field) { // Перевірка, чи елемент існує
+                field.classList.remove('valid');
+                field.classList.add('invalid');
+            }
+            
+            if (errorElement) { // Перевірка, чи елемент для помилки існує
+                errorElement.textContent = message;
+                errorElement.classList.add('show');
+            }
+        }
+
+        /**
+         * Функція для приховування помилки та позначення поля як валідного
+         * @param {string} fieldId - ID поля або ID контейнера для помилки
+         */
+        function hideError(fieldId) {
+            const field = document.getElementById(fieldId);
+            const errorElement = document.getElementById(fieldId + 'Error');
+            
+            if (field) { // Перевірка, чи елемент існує
+                field.classList.remove('invalid');
+                field.classList.add('valid');
+            }
+            
+            if (errorElement) { // Перевірка, чи елемент для помилки існує
+                errorElement.classList.remove('show');
+            }
+        }
+
+        /**
+         * Функція для показу повідомлення про успіх (З ЛР №9)
+         * @param {string} message - текст повідомлення
+         */
+        function showSuccessMessage(message) {
+            const successMessage = document.getElementById('successMessage');
+            const successText = document.getElementById('successText');
+            
+            successText.textContent = message;
+            successMessage.classList.add('show');
+            
+            setTimeout(() => {
+                hideSuccessMessage();
+            }, 5000);
+        }
+
+        /**
+         * Функція для приховування повідомлення про успіх (З ЛР №9)
+         */
+        function hideSuccessMessage() {
+            const successMessage = document.getElementById('successMessage');
+            successMessage.classList.remove('show');
+        }
+
+        /**
+         * Функція для перемикання між табами (авторизація/реєстрація) (З ЛР №9, адаптовано)
+         * @param {string} tabName - назва таба ('login' або 'register')
+         */
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab');
+            const forms = document.querySelectorAll('.form');
+            
+            hideSuccessMessage();
+            
+            // Скидаємо всі активні класи з табів
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Приховуємо всі форми
+            forms.forEach(form => {
+                form.classList.remove('active');
+                form.style.display = 'none'; /* Явно приховуємо */
+            });
+            
+            // Додаємо активний клас до вибраного таба та форми
+            if (tabName === 'login') {
+                document.querySelector('.tab[data-tab="login"]').classList.add('active');
+                loginForm.classList.add('active');
+                loginForm.style.display = 'flex'; /* Показуємо як flex */
+                clearForm(loginForm); // Очистити форму авторизації при перемиканні
+            } else {
+                document.querySelector('.tab[data-tab="register"]').classList.add('active');
+                registerForm.classList.add('active');
+                registerForm.style.display = 'flex'; /* Показуємо як flex */
+                clearForm(registerForm); // Очистити форму реєстрації при перемиканні
+            }
+        }
+
+        /**
+         * Функція для показу/приховування пароля (З ЛР №9)
+         * @param {string} inputId - ID поля паролю
+         */
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const toggleBtn = input.nextElementSibling;
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        }
+
+        /**
+         * Валідація імені та прізвища (З ЛР №9)
+         * @param {string} value - значення поля
+         * @param {string} fieldId - ID поля
+         * @param {string} fieldName - назва поля для повідомлення
+         */
+        function validateName(value, fieldId, fieldName) {
+            if (!value.trim()) {
+                showError(fieldId, `${fieldName} є обов'язковим полем`);
+                return false;
+            }
+            
+            if (value.length < 3) {
+                showError(fieldId, `${fieldName} повинно містити щонайменше 3 символи`);
+                return false;
+            }
+            
+            if (value.length > 15) {
+                showError(fieldId, `${fieldName} не повинно перевищувати 15 символів`);
+                return false;
+            }
+            
+            if (!patterns.name.test(value)) {
+                showError(fieldId, `${fieldName} містить недопустимі символи`);
+                return false;
+            }
+            
+            hideError(fieldId);
+            return true;
+        }
+
+        /**
+         * Валідація email (З ЛР №9)
+         * @param {string} value - значення email
+         */
+        function validateEmail(value) {
+            if (!value.trim()) {
+                showError('email', 'Email є обов\'язковим полем');
+                return false;
+            }
+            
+            if (!patterns.email.test(value)) {
+                showError('email', 'Введіть коректний email адрес');
+                return false;
+            }
+            
+            hideError('email');
+            return true;
+        }
+
+        /**
+         * Валідація пароля (З ЛР №9, адаптовано для ID)
+         * @param {string} value - значення пароля
+         * @param {string} fieldId - ID поля (loginPassword або password)
+         */
+        function validatePassword(value, fieldId) {
+            if (!value) {
+                showError(fieldId, 'Пароль є обов\'язковим полем');
+                return false;
+            }
+            
+            if (value.length < 6) {
+                showError(fieldId, 'Пароль повинен містити щонайменше 6 символів');
+                return false;
+            }
+            
+            hideError(fieldId);
+            return true;
+        }
+
+        /**
+         * Валідація підтвердження пароля (З ЛР №9)
+         * @param {string} password - основний пароль
+         * @param {string} confirmPassword - підтвердження пароля
+         */
+        function validateConfirmPassword(password, confirmPassword) {
+            if (!confirmPassword) {
+                showError('confirmPassword', 'Підтвердження пароля є обов\'язковим');
+                return false;
+            }
+            
+            if (password !== confirmPassword) {
+                showError('confirmPassword', 'Паролі не співпадають');
+                return false;
+            }
+            
+            hideError('confirmPassword');
+            return true;
+        }
+
+        /**
+         * Валідація телефону (З ЛР №9)
+         * @param {string} value - номер телефону
+         */
+        function validatePhone(value) {
+            if (!value.trim()) {
+                showError('phone', 'Телефон є обов\'язковим полем');
+                return false;
+            }
+            
+            if (!patterns.phone.test(value)) {
+                showError('phone', 'Введіть коректний український номер телефону (+380...)');
+                return false;
+            }
+            
+            hideError('phone');
+            return true;
+        }
+
+        /**
+         * Валідація дати народження (З ЛР №9)
+         * @param {string} value - дата народження
+         */
+        function validateBirthDate(value) {
+            if (!value) {
+                showError('birthDate', 'Дата народження є обов\'язковою');
+                return false;
+            }
+            
+            const birthDate = new Date(value);
+            const today = new Date();
+            
+            if (birthDate > today) {
+                showError('birthDate', 'Дата народження не може бути в майбутньому');
+                return false;
+            }
+            
+            const age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) 
+                ? age - 1 : age;
+            
+            if (actualAge < 12) {
+                showError('birthDate', 'Вибачте, але ви не можете зареєструватися, оскільки вам менше 12 років');
+                return false;
+            }
+            
+            hideError('birthDate');
+            return true;
+        }
+
+        /**
+         * Валідація статі (З ЛР №9)
+         */
+        function validateSex() {
+            const sexRadios = document.querySelectorAll('input[name="sex"]');
+            const isSelected = Array.from(sexRadios).some(radio => radio.checked);
+            
+            if (!isSelected) {
+                showError('sex', 'Оберіть стать');
+                return false;
+            }
+            
+            hideError('sex');
+            return true;
+        }
+
+        /**
+         * Валідація країни (З ЛР №9)
+         * @param {string} value - вибрана країна
+         */
+        function validateCountry(value) {
+            if (!value) {
+                showError('country', 'Оберіть країну');
+                return false;
+            }
+            
+            hideError('country');
+            return true;
+        }
+
+        /**
+         * Валідація міста (З ЛР №9)
+         * @param {string} value - вибране місто
+         */
+        function validateCity(value) {
+            if (!value) {
+                showError('city', 'Оберіть місто');
+                return false;
+            }
+            
+            hideError('city');
+            return true;
+        }
+
+        /**
+         * Оновлення списку міст при зміні країни (З ЛР №9)
+         */
+        function updateCities() {
+            const countrySelect = document.getElementById('country');
+            const citySelect = document.getElementById('city');
+            const selectedCountry = countrySelect.value;
+            
+            citySelect.innerHTML = '<option value="">Оберіть місто</option>';
+            
+            if (selectedCountry && cities[selectedCountry]) {
+                cities[selectedCountry].forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city.toLowerCase();
+                    option.textContent = city;
+                    citySelect.appendChild(option);
+                });
+                
+                citySelect.disabled = false;
+            } else {
+                citySelect.disabled = true;
+            }
+            
+            citySelect.classList.remove('valid', 'invalid');
+            const cityErrorElement = document.getElementById('cityError');
+            if (cityErrorElement) cityErrorElement.classList.remove('show');
+        }
+
+        /**
+         * Очищення форми (З ЛР №9)
+         * @param {HTMLFormElement} form - форма для очищення
+         */
+        function clearForm(form) {
+            form.reset();
+            
+            const inputs = form.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.classList.remove('valid', 'invalid');
+            });
+            
+            const errors = form.querySelectorAll('.error-message');
+            errors.forEach(error => {
+                error.classList.remove('show');
+            });
+            
+            if (form.id === 'registerForm') {
+                document.getElementById('city').disabled = true;
+                document.getElementById('city').innerHTML = '<option value="">Спочатку оберіть країну</option>';
+            }
+        }
+
+        // ******************************************************
+        // Кінець блоку функцій валідації та роботи з формами (З ЛР №9)
+        // ******************************************************
+
+        // Функції для роботи з LocalStorage (з ЛР №10)
+        const saveToStorage = (key, data) => {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (error) {
+                console.error('Помилка збереження в localStorage:', error);
+            }
+        };
+
+        const getFromStorage = (key) => {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            } catch (error) {
+                console.error('Помилка отримання з localStorage:', error);
+                return null;
+            }
+        };
+
+        // Функція для показу/приховування індикатора завантаження (з ЛР №10)
+        const toggleLoading = (show) => {
+            loadingIndicator.style.display = show ? 'block' : 'none';
+            isLoading = show;
+        };
+
+        // Функція для показу повідомлення про помилку завантаження (з ЛР №10)
+        const showErrorPage = (message) => { // Перейменовано, щоб уникнути конфлікту з showError з ЛР9
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        };
+
+        // Функція для перевірки авторизації (з ЛР №10, адаптовано)
+        const checkAuth = () => {
+            const user = getFromStorage('currentUser');
+            if (user) {
+                showApp(user);
+            } else {
+                showAuth();
+                switchTab('login'); // При показі форми авторизації, переконайтеся, що активний таб - "Авторизація"
+            }
+        };
+
+        // Функція для показу форми авторизації (з ЛР №10, адаптовано)
+        const showAuth = () => {
+            authContainer.style.display = 'block'; /* Змінено на block */
+            appContainer.style.display = 'none';
+            // Очищаємо форми при показі авторизації
+            clearForm(loginForm);
+            clearForm(registerForm);
+        };
+
+        // Функція для показу основного додатку (з ЛР №10)
+        const showApp = (user) => {
+            authContainer.style.display = 'none';
+            appContainer.style.display = 'block';
+            welcomeText.textContent = `Привіт, ${user.username}!`;
+            
+            favorites = getFromStorage('favorites') || [];
+            
+            if (allUsers.length === 0) {
+                loadUsers();
+            } else {
+                applyFilters(); // Застосовуємо фільтри до вже завантажених користувачів
+            }
+            applyUrlParams(); // Застосовуємо параметри з URL
+        };
+
+        // Функція для завантаження користувачів з API (з ЛР №10)
+        const loadUsers = async (page = 1) => {
+            if (isLoading) return;
+            toggleLoading(true);
+            showErrorPage(''); // Очистити попередні помилки
+
+            try {
+                const response = await fetch(`https://randomuser.me/api/?results=${usersPerPage}&page=${page}&seed=friends&inc=name,email,phone,picture,location,dob,registered,nat,gender`); /* Додано gender */
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                if (page === 1) {
+                    allUsers = data.results;
+                } else {
+                    allUsers = [...allUsers, ...data.results];
+                }
+                
+                updateNationalityFilter();
+                applyFilters();
+            } catch (error) {
+                console.error('Помилка завантаження користувачів:', error);
+                showErrorPage('Помилка завантаження даних користувачів. Спробуйте пізніше.');
+            } finally {
+                toggleLoading(false);
+            }
+        };
+
+        // Функція для оновлення фільтра країн (з ЛР №10)
+        const updateNationalityFilter = () => {
+            const nationalities = [...new Set(allUsers.map(user => user.nat))].sort();
+            nationalityFilter.innerHTML = '<option value="">Всі країни</option>';
+            
+            nationalities.forEach(nationality => {
+                const option = document.createElement('option');
+                option.value = nationality;
+                option.textContent = nationality;
+                nationalityFilter.appendChild(option);
+            });
+        };
+
+        // Функція debounce для оптимізації пошуку (з ЛР №10)
+        const debounce = (func, delay) => {
+            let timeoutId;
+            return function (...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => func.apply(this, args), delay);
+            };
+        };
+
+        // Функція для фільтрації користувачів (з ЛР №10)
+        const filterUsers = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const gender = genderFilter.value; /* "male" або "female" */
+            const ageRange = ageRangeFilter.value;
+            const nationality = nationalityFilter.value;
+
+            filteredUsers = allUsers.filter(user => {
+                // Пошук за ім'ям, прізвищем або email
+                const matchesSearch = !searchTerm || 
+                    user.name.first.toLowerCase().includes(searchTerm) ||
+                    user.name.last.toLowerCase().includes(searchTerm) ||
+                    user.email.toLowerCase().includes(searchTerm);
+                
+                // Фільтр за статтю - виправлення: API повертає 'male'/'female'
+                const matchesGender = !gender || user.gender === gender;
+                
+                // Фільтр за віком
+                const matchesAge = !ageRange || (() => {
+                    const [min, max] = ageRange.split('-').map(Number);
+                    return user.dob.age >= min && user.dob.age <= max;
+                })();
+                
+                // Фільтр за країною
+                const matchesNationality = !nationality || user.nat === nationality;
+                
+                return matchesSearch && matchesGender && matchesAge && matchesNationality;
+            });
+            
+            // Сортування застосовується після фільтрації
+            const sortValue = sortSelect.value;
+            if (sortValue) {
+                sortUsers(sortValue);
+            }
+            
+            currentPage = 1; /* Скинути на першу сторінку при новій фільтрації/сортуванні */
+            updateUrl();
+            renderUsers();
+        };
+
+        // Функція для сортування користувачів (з ЛР №10)
+        const sortUsers = (sortType) => {
+            const [field, order] = sortType.split('-');
+            filteredUsers.sort((a, b) => {
+                let valueA, valueB;
+                
+                switch (field) {
+                    case 'name':
+                        valueA = `${a.name.first} ${a.name.last}`.toLowerCase();
+                        valueB = `${b.name.first} ${b.name.last}`.toLowerCase();
+                        break;
+                    case 'age':
+                        valueA = a.dob.age;
+                        valueB = b.dob.age;
+                        break;
+                    case 'registered':
+                        valueA = new Date(a.registered.date).getTime(); // Для порівняння дат
+                        valueB = new Date(b.registered.date).getTime();
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (order === 'asc') {
+                    return valueA > valueB ? 1 : -1;
+                } else {
+                    return valueA < valueB ? 1 : -1;
+                }
+            });
+        };
+
+        // Функція для застосування всіх фільтрів (з ЛР №10)
+        const applyFilters = () => {
+            filterUsers();
+        };
+
+        // Функція для рендерингу карток користувачів (з ЛР №10)
+        const renderUsers = () => {
+            const startIndex = (currentPage - 1) * usersPerPage;
+            const endIndex = startIndex + usersPerPage;
+            const usersToShow = filteredUsers.slice(startIndex, endIndex);
+            
+            cardsContainer.innerHTML = '';
+            if (usersToShow.length === 0) {
+                cardsContainer.innerHTML = '<div class="loading">Користувачів не знайдено</div>';
+                pagination.innerHTML = ''; /* Приховати пагінацію, якщо немає користувачів */
+                return;
+            }
+            usersToShow.forEach(user => {
+                const userCard = createUserCard(user);
+                cardsContainer.appendChild(userCard);
+            });
+            renderPagination();
+        };
+
+        // Функція для створення картки користувача (з ЛР №10)
+        const createUserCard = (user) => {
+            const card = document.createElement('div');
+            card.className = `user-card ${favorites.includes(user.email) ? 'favorite' : ''}`;
+            
+            const registeredDate = new Date(user.registered.date).toLocaleDateString('uk-UA');
+            card.innerHTML = `
+                <div class="card-header">
+                    <img src="${user.picture.medium}" alt="${user.name.first}" class="user-avatar">
+                    <div>
+                        <div class="user-name">${user.name.first} ${user.name.last}</div>
+                        <div class="user-age">${user.dob.age} років</div>
+                    </div>
+                    <button class="favorite-btn" onclick="toggleFavorite('${user.email}')">
+                        ${favorites.includes(user.email) ? ' ⭐ ' : ' ☆ '}
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div> 📧  ${user.email}</div>
+                    <div> 📱  ${user.phone}</div>
+                    <div> 🏠  ${user.location.city}, ${user.location.country}</div>
+                    <div> 📅  Зареєстровано: ${registeredDate}</div>
+                    <div> 🌍  ${user.nat}</div>
+                </div>
+            `;
+            return card;
+        };
+
+        // Функція для переключення обраних друзів (з ЛР №10)
+        const toggleFavorite = (email) => {
+            const index = favorites.indexOf(email);
+            if (index > -1) {
+                favorites.splice(index, 1);
+            } else {
+                favorites.push(email);
+            }
+            
+            saveToStorage('favorites', favorites);
+            renderUsers(); /* Перерендерити картки для оновлення стилів */
+        };
+
+        // Функція для рендерингу пагінації (з ЛР №10)
+        const renderPagination = () => {
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+            pagination.innerHTML = '';
+            if (totalPages <= 1) return;
+            
+            const maxButtons = 5; /* Максимальна кількість кнопок пагінації */
+            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+            // Коригування, якщо досягли кінця
+            if (endPage - startPage + 1 < maxButtons) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            // Кнопка "Попередня"
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '‹';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => changePage(currentPage - 1);
+            pagination.appendChild(prevBtn);
+
+            // Кнопки сторінок
+            if (startPage > 1) {
+                const firstPageBtn = document.createElement('button');
+                firstPageBtn.textContent = '1';
+                firstPageBtn.onclick = () => changePage(1);
+                pagination.appendChild(firstPageBtn);
+                if (startPage > 2) {
+                    const dots = document.createElement('span');
+                    dots.textContent = '...';
+                    pagination.appendChild(dots);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = i === currentPage ? 'active' : '';
+                pageBtn.onclick = () => changePage(i);
+                pagination.appendChild(pageBtn);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const dots = document.createElement('span');
+                    dots.textContent = '...';
+                    pagination.appendChild(dots);
+                }
+                const lastPageBtn = document.createElement('button');
+                lastPageBtn.textContent = totalPages;
+                lastPageBtn.onclick = () => changePage(totalPages);
+                pagination.appendChild(lastPageBtn);
+            }
+
+            // Кнопка "Наступна"
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = '›';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => changePage(currentPage + 1);
+            pagination.appendChild(nextBtn);
+        };
+
+        // Функція для зміни сторінки (з ЛР №10)
+        const changePage = (newPage) => {
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                updateUrl();
+                renderUsers();
+                
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        // Функція для оновлення URL (з ЛР №10)
+        const updateUrl = () => {
+            const params = new URLSearchParams();
+            if (searchInput.value) params.set('search', searchInput.value);
+            if (sortSelect.value) params.set('sort', sortSelect.value);
+            if (genderFilter.value) params.set('gender', genderFilter.value);
+            if (ageRangeFilter.value) params.set('age', ageRangeFilter.value);
+            if (nationalityFilter.value) params.set('nationality', nationalityFilter.value);
+            if (currentPage > 1) params.set('page', currentPage);
+            
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            history.replaceState(null, '', newUrl);
+        };
+
+        // Функція для застосування параметрів з URL (з ЛР №10)
+        const applyUrlParams = () => {
+            const params = new URLSearchParams(window.location.search);
+            searchInput.value = params.get('search') || '';
+            sortSelect.value = params.get('sort') || '';
+            genderFilter.value = params.get('gender') || '';
+            ageRangeFilter.value = params.get('age') || '';
+            nationalityFilter.value = params.get('nationality') || '';
+            currentPage = parseInt(params.get('page')) || 1;
+            
+            if (allUsers.length > 0) {
+                applyFilters();
+            }
+        };
+
+        // ******************************************************
+        // Обробники подій (об'єднано з обох ЛР)
+        // ******************************************************
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ініціалізація обробників для перемикання табів (з ЛР №9)
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
+            });
+
+            // Обробник форми авторизації (з ЛР №9, адаптовано для ЛР №10)
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const usernameInput = document.getElementById('loginUsername');
+                const passwordInput = document.getElementById('loginPassword');
+
+                const username = usernameInput.value;
+                const password = passwordInput.value;
+
+                let isValid = true;
+
+                // Валідація username для логіну (проста перевірка на порожність)
+                if (!username.trim()) {
+                    showError('loginUsername', 'Ім\'я користувача є обов\'язковим');
+                    isValid = false;
+                } else {
+                    hideError('loginUsername');
+                }
+
+                // Валідація password для логіну
+                if (!validatePassword(password, 'loginPassword')) {
+                    isValid = false;
+                }
+
+                if (isValid) {
+                    // Фейкова авторизація - зберігаємо користувача в localStorage
+                    const user = { username, loginTime: new Date().toISOString() };
+                    saveToStorage('currentUser', user);
+                    showSuccessMessage(`Ви успішно авторизовані як ${username}!`);
+                    clearForm(this);
+                    showApp(user); /* Перехід до основного додатку */
+                }
+            });
+
+            // Обробник форми реєстрації (з ЛР №9)
+            registerForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const firstName = formData.get('firstName');
+                const lastName = formData.get('lastName');
+                const email = formData.get('email');
+                const password = formData.get('password'); // Пароль з форми реєстрації
+                const confirmPassword = formData.get('confirmPassword');
+                const phone = formData.get('phone');
+                const birthDate = formData.get('birthDate');
+                const sex = formData.get('sex');
+                const country = formData.get('country');
+                const city = formData.get('city');
+                
+                let isValid = true;
+                
+                if (!validateName(firstName, 'firstName', 'Ім\'я')) { isValid = false; }
+                if (!validateName(lastName, 'lastName', 'Прізвище')) { isValid = false; }
+                if (!validateEmail(email)) { isValid = false; }
+                if (!validatePassword(password, 'password')) { isValid = false; } // ID "password" стосується поля реєстрації
+                if (!validateConfirmPassword(password, confirmPassword)) { isValid = false; }
+                if (!validatePhone(phone)) { isValid = false; }
+                if (!validateBirthDate(birthDate)) { isValid = false; }
+                if (!validateSex()) { isValid = false; }
+                if (!validateCountry(country)) { isValid = false; }
+                if (!validateCity(city)) { isValid = false; }
+                
+                if (isValid) {
+                    console.log('Дані реєстрації:', {
+                        firstName, lastName, email, phone, birthDate, sex, country, city
+                    });
+                    showSuccessMessage(`Користувач ${firstName} успішно зареєстрований! Тепер ви можете увійти.`);
+                    clearForm(this);
+                    switchTab('login'); /* Переключитися на таб авторизації після успішної реєстрації */
+                }
+            });
+
+            // Обробники подій для валідації в реальному часі (з ЛР №9)
+            // Для форми реєстрації
+            document.getElementById('firstName').addEventListener('blur', function() { validateName(this.value, 'firstName', 'Ім\'я'); });
+            document.getElementById('lastName').addEventListener('blur', function() { validateName(this.value, 'lastName', 'Прізвище'); });
+            document.getElementById('email').addEventListener('blur', function() { validateEmail(this.value); });
+            document.getElementById('password').addEventListener('blur', function() {
+                validatePassword(this.value, 'password');
+                const confirmPasswordInput = document.getElementById('confirmPassword');
+                if (confirmPasswordInput && confirmPasswordInput.value) { validateConfirmPassword(this.value, confirmPasswordInput.value); }
+            });
+            document.getElementById('confirmPassword').addEventListener('blur', function() {
+                const passwordInput = document.getElementById('password');
+                if (passwordInput) { validateConfirmPassword(passwordInput.value, this.value); }
+            });
+            document.getElementById('phone').addEventListener('blur', function() { validatePhone(this.value); });
+            document.getElementById('birthDate').addEventListener('change', function() { validateBirthDate(this.value); });
+            document.querySelectorAll('input[name="sex"]').forEach(radio => { radio.addEventListener('change', validateSex); });
+            document.getElementById('country').addEventListener('change', function() {
+                updateCities();
+                validateCountry(this.value);
+            });
+            document.getElementById('city').addEventListener('change', function() { validateCity(this.value); });
+
+            // Для форми авторизації
+            document.getElementById('loginUsername').addEventListener('blur', function() {
+                if (!this.value.trim()) { showError('loginUsername', 'Ім\'я користувача є обов\'язковим'); }
+                else { hideError('loginUsername'); }
+            });
+            document.getElementById('loginPassword').addEventListener('blur', function() {
+                validatePassword(this.value, 'loginPassword');
+            });
+
+            // Автоматичне форматування телефону (з ЛР №9)
+            document.getElementById('phone').addEventListener('input', function() {
+                let value = this.value.replace(/\D/g, '');
+                
+                if (value.startsWith('380') && value.length > 3) {
+                    value = '+380' + value.substring(3);
+                } else if (value.startsWith('0') && value.length > 0) {
+                    value = '+380' + value.substring(1);
+                } else if (value.length > 0 && !value.startsWith('+380')) {
+                    value = '+380' + value;
+                }
+                
+                if (value.length > 13) {
+                    value = value.substring(0, 13);
+                }
+                
+                this.value = value;
+            });
+
+
+            // Обробники подій для основного додатку (з ЛР №10)
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('favorites'); /* Очистити також обраних друзів */
+                
+                allUsers = [];
+                filteredUsers = [];
+                currentPage = 1;
+                
+                showAuth();
+            });
+
+            const debouncedSearch = debounce(() => {
+                applyFilters();
+            }, 300);
+            searchInput.addEventListener('input', debouncedSearch);
+
+            sortSelect.addEventListener('change', applyFilters);
+            genderFilter.addEventListener('change', applyFilters);
+            ageRangeFilter.addEventListener('change', applyFilters);
+            nationalityFilter.addEventListener('change', applyFilters);
+
+            window.addEventListener('popstate', () => {
+                applyUrlParams();
+            });
+
+            window.addEventListener('scroll', debounce(() => {
+                // Довантажуємо більше користувачів тільки якщо ми на останній сторінці і ще є дані для завантаження
+                const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+                const isAtBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 500); /* 500px від низу */
+
+                if (isAtBottom && !isLoading) {
+                    if (currentPage < totalPages) {
+                        changePage(currentPage + 1); // Перехід на наступну сторінку, якщо вже завантажено
+                    } else if (allUsers.length < 500) { // Приклад обмеження загальної кількості користувачів (можна змінити)
+                        const nextApiPage = Math.floor(allUsers.length / usersPerPage) + 1;
+                        loadUsers(nextApiPage); // Завантаження нової порції з API
+                    }
+                }
+            }, 100));
+
+            // Глобальна функція для toggleFavorite (потрібна для onclick в HTML)
+            window.toggleFavorite = toggleFavorite;
+
+            // Ініціалізація додатку
+            checkAuth();
+        });
+    </script>
+</body>
+</html>
